@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.spatial import Delaunay
 
-
 f = open("smarna.txt")
 pointValue = dict()
 indPoint = dict()
@@ -80,7 +79,6 @@ f1.close()
 print("END write E, V < E, E < T")
 print("START gradient")
 
-
 #GRADIENT E -> T
 TriFromEdg = dict()
 VerUsed = set()
@@ -100,11 +98,14 @@ for e in edgeTriangle:
     pair={e:minT}
     if minT != None:
         TriFromEdg[minT]=e
-        EdgUsed = EdgUsed.union({e})
+        EdgUsed.add(e)
     f1.write(str(pair) + "\n")
 f1.close()
-
 #GRADIENT E -> T
+
+# with open("smarna_edg_arrows.txt") as f:
+#     for line in f:
+        
 
 #GRADIEN V -> E
 EdgFromVer = dict()
@@ -115,7 +116,7 @@ for v in vertexEdge:
     min=indHight[v]
     minE = None
     for e in edges:
-        if not len(EdgUsed.intersection({e})):
+        if not e not in EdgUsed:
             if e[0] != v and indHight[e[0]] < min:
                 min = indHight[e[0]]
                 minE = e
@@ -125,15 +126,15 @@ for v in vertexEdge:
     pair={v : minE}
     if minE != None:
         EdgFromVer[minE] = v
-        EdgUsed = EdgUsed.union({minE})
-        VerUsed = VerUsed.union({v})
+        EdgUsed.add(minE)
+        VerUsed.add(v)
 
     f1.write(str(pair)+"\n")
 f1.close()
 
+
+
 #GRADIENT V -> E
-
-
 print("END gradient")
 
 
@@ -147,7 +148,9 @@ f1.close()
 EdgCri=set(edgeTriangle.keys()).difference(EdgUsed)
 f1 = open("smarna_edg_critical.txt","w")
 for e in EdgCri:
-    f1.write(str(e)+"\n")
+    eS = set(e)
+    if not len(VerCri.intersection(eS)):
+        f1.write(str(e)+"\n")
 f1.close()
 
 #Vsi trikotniki, od katerih odstranimo tiste na katere kaze kak edge
@@ -156,6 +159,10 @@ f1 = open("smarna_tri_critical.txt","w")
 for t in TriCri:
     f1.write(str(t)+"\n")
 f1.close()
+
+
+
+
 
 
 print("END critical")
