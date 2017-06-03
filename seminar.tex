@@ -1,0 +1,70 @@
+\documentclass{article}
+\usepackage[utf8x]{inputenc}   % omogoča uporabo slovenskih črk kodiranih v formatu UTF-8
+\usepackage[slovene,english]{babel}    % naloži, med drugim, slovenske delilne vzorce
+\usepackage{fancyhdr}
+ 
+\pagestyle{fancy}
+\fancyhf{}
+
+\chead{Fakulteta za računalništvo in informatiko, Univerza v Ljubljani}
+
+
+
+
+
+\begin{document}
+\selectlanguage{slovene}
+\begin{center} {\large Janez Štular, Urban Marovt, Svit Timej Zebec} \end{center}
+\begin{center} {\Large \textbf{Šmarna gora}} \end{center}
+\begin{center} {\large Skupinski projekt pri predmetu Računska topologija} \end{center}
+\begin{center} {\large MENTOR: as. dr. Aleksandra Franc} \end{center}
+\\
+Namen projekta je uporabiti Diskretno Moresejevo funkcijo za modeliranje zemeljskega reljefa. Podan je konkreten problem, ki zajema koordinate z nadmirsko višino za območje Šmarne  gore in Grmade. Cilj projekta je določiti vrhova omenjenih gora, poti med njima in izračun Bettijevih števil.
+
+\section{Uvod}
+Topološke analize podatkov Šmarne gore in Grmade smo se lotili s programskim jezikom Python. Vhodnih podatkov je bilo 40582 vrstic sestavljenih iz treh komponent. Vsaka vrstica nam predstavlja koordinate točke in njeno nadmorsko višino, celotna množica pa nam posledično predstavlja reljef površine. Posledično je pred topološko analizo točke smiselno triangulirati in zaradi velike količine točk tudi zgraditi Morsejevo funkcijo. S tem zmanjšamo zmanjšamo nadaljno količino obdelovanih podatkov, ker večino informacij lahko pridobimo že iz kritičnih celic.
+
+\section{Triangulacija in izgradnja Morsejeve funkcije}
+Prvi korak pri obdelavi podatkov sestavljenih iz koordinat je gradnja triangulacije. Uporabili smo Delauneyjevo triangulacijo, ker je bila predpisana in nam zagotavlja največjo velikost minimalnih kotev trikotnikov in s tem zmanjšuje število računskih napak. V prvi fazi smo uporabili lastno implementacijo omenjenega algoritma, ki smo jo kasneje zamenjali z implementacijo knjižnjice SciPy ~\cite{SciPy}. Dobljeno triangulacijo nato shranimo v datoteke, prav tako shranimo tudi, vse možne povezave.
+
+Naslednji korak je gradnja Morsejeve funkcije, ki jo lahko zgradimo z uporabo izmerjene nadmorske višine. Algoritem za gradnjo Morsejeve funkcije smo napisali sami. Deluje, tako da lice poveže z simplexom višje dimenzije če je vsaj ena točka simplexa nižja od najnižje točke lica na sledeči način:
+\begin{enumerate}
+    \item Zgradi puščice, ki kažejo iz neporabljenih daljic na neporabljene trikotnike.
+    
+    Izberemo povezao in si zapomnimo najmanjšo nadmorsko višina njenih krajišč, kot najmanjšo vrednost. Sprehodimo se skozi množico trikotnikov, katerih lice je omenjena povezava in za vsak trikotnik preverimo ali je bil že uporabljen. Če trikotnik še ni bil uporabljen, preverimo kakašna je nadmorska višina tretje točke in če je manjša od najmanjše si trikotnik in njegovo višino zapomnemo.
+    
+    Na koncu preverimo če smo si zapomnili kakšen trikotnik in če smo si ga naredimo puščico iz povezave na ta trikotnik. Povezavo in trikotnik si nato zapomnemo kot porabljena elementa.
+    
+    Postopek ponovimo za vse povezave.
+    
+    
+    \item Zgradi puščice, ki kažejo iz neporabljenih točk na neporabljene daljice.
+    Puščice gradimo na enak način, kot pri povezavah in trikotnikih, le da porabljenih povezav ne smemo ponovno uporabiti. Prav tako si na koncu zapomnimo, porabljene povezave. Namesto porabljenih trikotnikov pa si zapomnemo porabljene točke, saj nam neporabljeni simpleksi na koncu predstavljajo kritične celice
+    
+    \item Kot kritične celice določi trikotniki, daljice in točke, ki niso porabljene. Kot kritične trikotnike algoritem določimo tiste, na katere ne kaže nobena puščica. Kot kritične povezave, določimo povezave, ne kažejo na noben trikotnik in hkrati nanje ne kaže nobena puščica. Kot pritične toče pa določimo vse točke, ki ne kažejo na nobeno povezavo. 
+\end{enumerate}
+Celotna Morsejeva funkcija temelji na ideji, da simplex dimenzije p povežemo z nižjim simpleksom dimenzij p+1, kar nam preprečuje kreiranje ciklov.
+
+\section{Optimizacija kritičnih celic}
+
+\section{Okvirna delitev dela}
+Pri izdelavi projekta smo si med seboj pomagali in sodelovali, zato delitev dela lahko podamo samo okvirno in je sledeča:
+\begin{itemize}
+    \item Janez Štular: prvi del naloge, ki vključuje triangulacijo in gradnjo Morsejeve funkcije z definicijo kritičnih celic ter priprava ogrodja poročila,
+    \item Urban Marovt:
+    \item Svit Timej Zebec:
+\end{itemize}
+
+\section{Zaključek}
+Napišita zaključek.
+
+\begin{thebibliography}{99}
+\bibitem{porocilo} Oblika poročila
+        Dosegljivo:\\ https://fri.uni-lj.si/sl/napotki-za-pisanje-porocila [Dostopano 31. 05. 2017].
+\bibitem{SciPy} Knjižnjica SciPy
+        Dosegljivo:\\ https://www.scipy.org/ [Dostopano 31. 05. 2017].
+        
+
+\end{thebibliography}
+
+\end{document}
