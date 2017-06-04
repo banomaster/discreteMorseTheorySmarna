@@ -224,6 +224,10 @@ toVisit = {}
 def computePathsFromTriangle((e, t)):
     paths = []
     possibleNewEdges = copy.copy(triangleEdges[t])
+
+    # print possibleNewEdges
+    # print e
+
     possibleNewEdges.remove(e)
 
     for possibleEdge in possibleNewEdges:
@@ -254,13 +258,12 @@ def computePathsFromTriangle((e, t)):
     
 
 def computeMaxPathsEdgeTriangle():
+    print "START"
     n = len(EdgToTri)
     toVisit = copy.copy(EdgToTri)
 
     while len(toVisit) != 0:
-
         startEdge, triangle = toVisit.popitem()
-        
         if triangle == None:
             continue
     
@@ -287,14 +290,13 @@ def vertexToEdgePaths():
 
         if vertex in pathStartFromVertex:
             concatPath = pathStartFromVertex[vertex]
-            if concatPath != None:
-                pathStartFromVertex[vertex] = None
-                pathStartFromVertex[startVertex] = currentPath + concatPath
-                startVertex = None
-                edge = None
-                currentPath = []
-                vertex = None
-                continue
+            del pathStartFromVertex[vertex]
+            pathStartFromVertex[startVertex] = currentPath + concatPath
+            startVertex = None
+            edge = None
+            currentPath = []
+            vertex = None
+            continue
 
         edge = vertexToEdgeDict[vertex]
 
@@ -309,7 +311,7 @@ def vertexToEdgePaths():
                 verticesToCheck.remove(vertex)
 
         else:  
-            if startVertex != None and len(currentPath) > 0:
+            if len(currentPath) > 0:
                 pathStartFromVertex[startVertex] = currentPath
             startVertex = None
             edge = None
@@ -384,21 +386,19 @@ def euler(Crit):
 
     return x
 
-def path_flip(alpha, beta, my_path, Crit, Paths):
+def path_flip(alpha, beta, my_path, critSet, Paths):
 
     Q = my_path.keys()
     q = my_path[Q[0]]
     k = len(q)
 
-    pair = q[0]
-
-
-    first, second = pair
-    if len(first) == 1:
-        oldPaths = set()
-    elif len(first) == 2:
-        oldPaths = computePathsFromTriangle((first,second))
-        oldPaths = set([tuple(path) for path in oldPaths])
+    # pair = q[0]
+    # first, second = pair
+    # if len(first) == 1:
+    #     oldPaths = set()
+    # elif len(first) == 2:
+    #     oldPaths = computePathsFromTriangle((first,second))
+    # oldPaths = set([tuple(path) for path in oldPaths])
 
     # remove old pairs from the arrow dicts
     for pair in q:
@@ -410,6 +410,7 @@ def path_flip(alpha, beta, my_path, Crit, Paths):
 
     # revese the path q
     qbar = [(alpha, q[k - 1][1])]
+    print "qbar: " + str(qbar)
     for i in range(k - 1, 0, -1):
         qbar.append((q[i][0], q[i - 1][1]))
     qbar.append((q[0][0], beta))
@@ -422,25 +423,29 @@ def path_flip(alpha, beta, my_path, Crit, Paths):
         elif len(first) == 2:
             EdgToTri[first] = second
 
-    pair = qbar[0]
-    first, second = pair
-    if len(first) == 1:
-        newPaths = set()
-    elif len(first) == 2:
-        newPaths = computePathsFromTriangle((first,second))
-        newPaths = set([tuple(path) for path in newPaths])
+    # pair = qbar[0]
+    # print pair
+    # first, second = pair
+    # if len(first) == 1:
+    #     newPaths = [qbar]
+    # elif len(first) == 2:
+    #     newPaths = computePathsFromTriangle((first,second))
+    #     newPaths.append(qbar)
+    # newPaths = set([tuple(path) for path in newPaths])
 
     # remove old paths and add new paths
-    for oldPath in oldPaths:
-        Paths.remove(oldPath)
-    for newPath in newPaths:
-        Paths.add(newPath)
-    
-    print alpha
-    Crit.remove(alpha)
-    Crit.remove(beta)
+    # for oldPath in oldPaths:
+    #     Paths.remove(oldPath)
+    # for newPath in newPaths:
+    #     Paths.add(newPath)
 
-    return Crit, Paths
+    Paths = computeMaxPathsEdgeTriangle()
+    Paths = Paths.union(vertexToEdgePaths())
+    
+    critSet.remove(alpha)
+    critSet.remove(beta)
+
+    return critSet, Paths
 
 def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = None):
 
@@ -593,6 +598,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
 def findAllCriticalPathsFromBeta((e, t), critSet):
     # zadnji element v kriticni poti vedno predstavlja alfo
+    print "REC CALL"
 
     criticalPaths = []
     possibleNewEdges = copy.copy(triangleEdges[t])
@@ -602,7 +608,7 @@ def findAllCriticalPathsFromBeta((e, t), critSet):
         if EdgToTri[possibleEdge] == None:
             continue
         
-        newPaths = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]))
+        newPaths = findAllCriticalPathsFromBeta((possibleEdge, EdgToTri[possibleEdge]), critSet)
         if newPaths != None:
             criticalPaths += newPaths
         
@@ -628,6 +634,7 @@ def findValidCriticalPath(paths, critSet):
     
     allPaths = copy.copy(paths)
     while len(paths) != 0:
+        print "Loop"
         #select random Path 
         path = paths.pop()
 
@@ -639,8 +646,9 @@ def findValidCriticalPath(paths, critSet):
                 # nasli kriticno pot
                 alpha = criticalBoundary[endEdge][0]
                 beta = criticalCofaces[startNode][0]
-                my_path = {"path": path}
-                return alpha, beta, my_path
+                if alpha in critSet and beta in critSet:
+                    my_path = {"path": path}
+                    return alpha, beta, my_path
         else:
             # EdgTri poti
             startEdge = path[0][0]
@@ -652,26 +660,36 @@ def findValidCriticalPath(paths, critSet):
                     for criticalPath1 in criticalPaths:
                         valid = True
                         for criticalPath2 in criticalPaths:
-                            if criticalPath1[-1] == criticalPath2[-1]:
+                            if criticalPath1 != criticalPath2 and criticalPath1[-1] == criticalPath2[-1]:
                                 valid = False
                         
                         if valid:
+                            print "critical path: " + str(criticalPath1)
                             alpha = criticalPath1[-1]
                             my_path = {"path": criticalPath1[0:-1]}
+                            print "return EdgTri poti"
                             return alpha, beta, my_path
     return None
 
 
 
-def cancelBetter(Crit, paths):
+def cancelBetter(critSet, paths):
+    count = 0
     while True:
-        critSet = set(Crit)
+        print "CANCEL LOOP"
         criticalPath = findValidCriticalPath(paths, critSet)
         if criticalPath == None:
             break
         
         alpha, beta, my_path = criticalPath
-        Crit, Paths = path_flip(alpha, beta, my_path, Crit, paths)
+
+        # critSet, Paths = path_flip(alpha, beta, my_path, critSet, paths)
+        critSet, paths = path_flip(alpha, beta, my_path, critSet, paths)
+
+        count += 1
+    print "KONEC"
+
+    return critSet, paths
             
 
 print("START critical")
@@ -735,8 +753,7 @@ f1.close()
 
 print("END critical")
 
-Crit = VerCriTuple + EdgCriTuple + list(TriCri)
-critSet = set(Crit)
+critSet = set(VerCriTuple + EdgCriTuple + list(TriCri))
 X = [tuple(t) for t in T]
 s = (3, 4)
 
@@ -745,17 +762,24 @@ print "Generate paths"
 paths = computeMaxPathsEdgeTriangle()
 paths = paths.union(vertexToEdgePaths())
 
+
+critNumBefore = len(critSet)
+
 print "Start canceling"
 
+
 #Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
-Crit, Paths = cancelBetter(Crit, paths)
-euler(Crit)
+critSet, Paths = cancelBetter(critSet, paths)
+euler(critSet)
+
+critNumAfter = len(critSet)
+
+print "DELETE CRIT: " + str(critNumBefore - critNumAfter)
 
 f1 = open("after_smarna_critical.txt","w")
-for c in Crit:
+for c in critSet:
     f1.write(str(c)+"\n")
 f1.close()
-
 
 print "Done."
 
