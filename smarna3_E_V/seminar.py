@@ -596,7 +596,11 @@ for e in EdgCri:
                 criticalBoundary[t] = [(v,)]
             else:
                 criticalBoundary[t].append((v,))
-
+        for v in boundary(e):
+            if v not in criticalCofaces:
+                criticalCofaces[v] = [e]
+            else:
+                criticalCofaces[v].append(e)
         
         f1.write(str(e)+"\n")
 f1.close()
@@ -608,10 +612,15 @@ maxIndex = 0
 TriCri=set([tuple(t) for t in T]).difference(TriFromEdg.keys())
 f1 = open("smarna_tri_critical.txt","w")
 for t in TriCri:
-    for v in t:
-        if indHight[v] > maxHeight:
-            maxHeight = indHight[v]
-            maxIndex = v 
+    # for v in t:
+    #     if indHight[v] > maxHeight:
+    #         maxHeight = indHight[v]
+    #         maxIndex = v
+    for e in boundary(t):
+        if e not in criticalCofaces:
+            criticalCofaces[e] = [t]
+        else:
+            criticalCofaces[e].append(t)
 
     f1.write(str(t)+"\n")
 f1.close()
@@ -624,7 +633,7 @@ critSet = set(Crit)
 X = [tuple(t) for t in T]
 s = (3, 4)
 
-paths "START vector field + paths"
+print "START vector field + paths"
 paths = []
 paths = computeMaxPathsEdgeTriangle()
 paths += vertexToEdgePaths()
@@ -632,7 +641,7 @@ print "END vector field + paths"
 
 
 
-Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
+#Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
 
 euler(Crit)
 
@@ -644,7 +653,43 @@ f1.close()
 
 print "Done."
 
-def findValidCriticalPath(paths, critSet):
+
+def findAllCriticalPathsFromBeta((e, t)):
+    # zadnji element v kriticni poti vedno predstavlja alfo
+
+    criticalPaths = []
+    possibleNewEdges = copy.copy(triangleEdges[t])
+    possibleNewEdges.remove(e)
+
+    for possibleEdge in possibleNewEdges:
+        if EdgToTri[possibleEdge] == None:
+            continue
+        
+        newPaths = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]))
+        if newPaths != None:
+            criticalPaths += newPaths
+        
+        #check if criticalEdge
+        if possibleEdge in critSet:
+            # dodamo novo kriticno pot ki se zacne z alfo
+            criticalPaths.append([possibleEdge])
+ 
+    
+    if len(paths) == 0:
+        # zacni novo pot
+        return None
+    else:
+        # dodaj vektor na vse najdene poti
+        for path in paths:
+            path.insert(0,(e, t))
+        
+        if any(map(lambda x: True if x in critSet else False),  possibleNewEdges):
+            paths.append((e, t))
+
+        return paths
+
+
+def findValidCriticalPath(paths, critSet, Crit, V):
     
     visitedPathsIndexes = {}
     while True:
@@ -662,8 +707,21 @@ def findValidCriticalPath(paths, critSet):
             # verEdg poti
             startNode = path[0][0]
             endEdge = path[-1][1]
-        #else:
-            #EdgTri poti
+            if startNode in criticalCofaces and endEdge in criticalBoundary:
+                # nasli kriticno pot
+                alpha = criticalBoundary[endEdge][0]
+                beta = criticalCofaces[startNode][0]
+                my_path = {"path": path}
+                return alpha, beta, my_path
+        else:
+            # EdgTri poti
+            startEdge = path[0][0]
+            if startNode in criticalCofaces:
+                beta = criticalCofaces[startNode][0]
+                criticalPaths = findAllCriticalPathsFromBeta(path[0])
+
+
+
 
 
 
