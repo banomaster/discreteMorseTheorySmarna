@@ -258,7 +258,6 @@ def computePathsFromTriangle((e, t)):
     
 
 def computeMaxPathsEdgeTriangle():
-    print "START"
     n = len(EdgToTri)
     toVisit = copy.copy(EdgToTri)
 
@@ -284,7 +283,6 @@ def vertexToEdgePaths():
     vertex = None
 
     while len(verticesToCheck) > 0:
-
         if vertex == None:
             vertex = verticesToCheck.pop()
 
@@ -387,7 +385,7 @@ def euler(Crit):
     return x
 
 def path_flip(alpha, beta, my_path, critSet, Paths):
-
+    
     Q = my_path.keys()
     q = my_path[Q[0]]
     k = len(q)
@@ -410,7 +408,6 @@ def path_flip(alpha, beta, my_path, critSet, Paths):
 
     # revese the path q
     qbar = [(alpha, q[k - 1][1])]
-    print "qbar: " + str(qbar)
     for i in range(k - 1, 0, -1):
         qbar.append((q[i][0], q[i - 1][1]))
     qbar.append((q[0][0], beta))
@@ -598,7 +595,6 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
 def findAllCriticalPathsFromBeta((e, t), critSet):
     # zadnji element v kriticni poti vedno predstavlja alfo
-    print "REC CALL"
 
     criticalPaths = []
     possibleNewEdges = copy.copy(triangleEdges[t])
@@ -629,26 +625,70 @@ def findAllCriticalPathsFromBeta((e, t), critSet):
 
         return criticalPaths
 
+def pathFromVertex(vertex):
+    currentPath = []
+
+    while vertex != None:
+        edge = vertexToEdgeDict[vertex]
+        if edge != None:
+            currentPath.append((vertex, edge))
+            (v1,v2) = edge
+            vertex = (v2,) if vertex == (v1,) else (v1,)
+        else:
+            vertex = None
+
+    return tuple(currentPath)
+
+def getNodesOnPath(path):
+    nodes = set()
+    for vector in path:
+        nodes.add(vector[1][0])
+        nodes.add(vector[1][1])
+    return nodes
+
 
 def findValidCriticalPath(paths, critSet):
     
     allPaths = copy.copy(paths)
     while len(paths) != 0:
-        print "Loop"
         #select random Path 
         path = paths.pop()
 
         if len(path[0][0]) == 1:
             # verEdg poti
-            startNode = path[0][0]
+            
             endEdge = path[-1][1]
-            if startNode in criticalCofaces and endEdge in criticalBoundary:
-                # nasli kriticno pot
-                alpha = criticalBoundary[endEdge][0]
-                beta = criticalCofaces[startNode][0]
-                if alpha in critSet and beta in critSet:
-                    my_path = {"path": path}
-                    return alpha, beta, my_path
+            if endEdge not in criticalBoundary:
+                continue
+            
+            alpha = criticalBoundary[endEdge][0]
+
+            curNode = path[0][0]
+            index = 0
+            while curNode != None:
+                # TODO loop through critical cofaces
+                if curNode in criticalCofaces and criticalCofaces[curNode][0] in critSet:
+                    
+                    possibleCriticalPath = path[index:len(path)]
+                    beta = criticalCofaces[curNode][0]
+                    otherNode = (beta[0],) if beta[0] != curNode[0] else (beta[1],)
+                    otherPath = pathFromVertex(otherNode)
+
+                    nodesOnCritPath = getNodesOnPath(possibleCriticalPath)
+                    nodesOnOtherPath = getNodesOnPath(otherPath)
+
+                    pathsIntersection = nodesOnCritPath.intersection(nodesOnOtherPath)
+
+                    if len(pathsIntersection) == 0:
+                        my_path = {"path": possibleCriticalPath}
+                        return alpha, beta, my_path
+                
+                index += 1
+                if index >= len(path):
+                    # konec poti
+                    break
+
+                curNode = path[index][0]
         else:
             # EdgTri poti
             startEdge = path[0][0]
@@ -664,10 +704,8 @@ def findValidCriticalPath(paths, critSet):
                                 valid = False
                         
                         if valid:
-                            print "critical path: " + str(criticalPath1)
                             alpha = criticalPath1[-1]
                             my_path = {"path": criticalPath1[0:-1]}
-                            print "return EdgTri poti"
                             return alpha, beta, my_path
     return None
 
@@ -676,7 +714,6 @@ def findValidCriticalPath(paths, critSet):
 def cancelBetter(critSet, paths):
     count = 0
     while True:
-        print "CANCEL LOOP"
         criticalPath = findValidCriticalPath(paths, critSet)
         if criticalPath == None:
             break
@@ -684,6 +721,9 @@ def cancelBetter(critSet, paths):
         alpha, beta, my_path = criticalPath
 
         # critSet, Paths = path_flip(alpha, beta, my_path, critSet, paths)
+        if count % 10 == 0:
+            print "COUNT FLIPS: " + str(count) 
+
         critSet, paths = path_flip(alpha, beta, my_path, critSet, paths)
 
         count += 1
