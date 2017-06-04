@@ -384,13 +384,15 @@ def euler(Crit):
 
     return x
 
-def path_flip(alpha, beta, my_path, Crit, V, Paths):
+def path_flip(alpha, beta, my_path, Crit, Paths):
 
     Q = my_path.keys()
-    q = Q[0]
+    q = my_path[Q[0]]
     k = len(q)
 
     pair = q[0]
+
+
     first, second = pair
     if len(first) == 1:
         oldPaths = set()
@@ -433,11 +435,12 @@ def path_flip(alpha, beta, my_path, Crit, V, Paths):
         Paths.remove(oldPath)
     for newPath in newPaths:
         Paths.add(newPath)
-
+    
+    print alpha
     Crit.remove(alpha)
     Crit.remove(beta)
 
-    return Crit, V, Paths
+    return Crit, Paths
 
 def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = None):
 
@@ -588,12 +591,92 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
     return Crit, V, Paths
 
+def findAllCriticalPathsFromBeta((e, t), critSet):
+    # zadnji element v kriticni poti vedno predstavlja alfo
 
+    criticalPaths = []
+    possibleNewEdges = copy.copy(triangleEdges[t])
+    possibleNewEdges.remove(e)
+
+    for possibleEdge in possibleNewEdges:
+        if EdgToTri[possibleEdge] == None:
+            continue
+        
+        newPaths = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]))
+        if newPaths != None:
+            criticalPaths += newPaths
+        
+        #check if criticalEdge
+        if possibleEdge in critSet:
+            # dodamo novo kriticno pot ki se zacne z alfo
+            criticalPaths.append([possibleEdge])
+ 
+    
+    if len(criticalPaths) == 0:
+        # zacni novo pot
+        return None
+    else:
+        # dodaj vektor na vse najdene poti
+        for path in criticalPaths:
+            path.insert(0,(e, t))
+
+
+        return criticalPaths
+
+
+def findValidCriticalPath(paths, critSet):
+    
+    allPaths = copy.copy(paths)
+    while len(paths) != 0:
+        #select random Path 
+        path = paths.pop()
+
+        if len(path[0][0]) == 1:
+            # verEdg poti
+            startNode = path[0][0]
+            endEdge = path[-1][1]
+            if startNode in criticalCofaces and endEdge in criticalBoundary:
+                # nasli kriticno pot
+                alpha = criticalBoundary[endEdge][0]
+                beta = criticalCofaces[startNode][0]
+                my_path = {"path": path}
+                return alpha, beta, my_path
+        else:
+            # EdgTri poti
+            startEdge = path[0][0]
+            if startEdge in criticalCofaces:
+                beta = criticalCofaces[startEdge][0]
+                criticalPaths = findAllCriticalPathsFromBeta(path[0], critSet)
+                
+                if criticalPaths != None:
+                    for criticalPath1 in criticalPaths:
+                        valid = True
+                        for criticalPath2 in criticalPaths:
+                            if criticalPath1[-1] == criticalPath2[-1]:
+                                valid = False
+                        
+                        if valid:
+                            alpha = criticalPath1[-1]
+                            my_path = {"path": criticalPath1[0:-1]}
+                            return alpha, beta, my_path
+    return None
+
+
+
+def cancelBetter(Crit, paths):
+    while True:
+        critSet = set(Crit)
+        criticalPath = findValidCriticalPath(paths, critSet)
+        if criticalPath == None:
+            break
+        
+        alpha, beta, my_path = criticalPath
+        Crit, Paths = path_flip(alpha, beta, my_path, Crit, paths)
+            
 
 print("START critical")
 criticalBoundary = {}
 criticalCofaces = {}
-
 
 VerCri = set(vertexEdge.keys()).difference(VerUsed)
 VerCriTuple = []
@@ -665,7 +748,7 @@ paths = paths.union(vertexToEdgePaths())
 print "Start canceling"
 
 #Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
-
+Crit, Paths = cancelBetter(Crit, paths)
 euler(Crit)
 
 f1 = open("after_smarna_critical.txt","w")
@@ -677,79 +760,3 @@ f1.close()
 print "Done."
 
 
-def findAllCriticalPathsFromBeta((e, t)):
-    # zadnji element v kriticni poti vedno predstavlja alfo
-
-    criticalPaths = []
-    possibleNewEdges = copy.copy(triangleEdges[t])
-    possibleNewEdges.remove(e)
-
-    for possibleEdge in possibleNewEdges:
-        if EdgToTri[possibleEdge] == None:
-            continue
-        
-        newPaths = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]))
-        if newPaths != None:
-            criticalPaths += newPaths
-        
-        #check if criticalEdge
-        if possibleEdge in critSet:
-            # dodamo novo kriticno pot ki se zacne z alfo
-            criticalPaths.append([possibleEdge])
- 
-    
-    if len(paths) == 0:
-        # zacni novo pot
-        return None
-    else:
-        # dodaj vektor na vse najdene poti
-        for path in paths:
-            path.insert(0,(e, t))
-        
-        if any(map(lambda x: True if x in critSet else False),  possibleNewEdges):
-            paths.append((e, t))
-
-        return paths
-
-
-def findValidCriticalPath(paths, critSet, Crit, V):
-    
-    visitedPathsIndexes = {}
-    while True:
-        #select random Path 
-        m = len(paths)
-        r = random.randint(0, m - 1)
-        path = paths[r]
-
-        if len(path) == 1:
-            continue
-
-        visitedPathsIndexes[r] = True
-
-        if len(path[0][0]) == 1:
-            # verEdg poti
-            startNode = path[0][0]
-            endEdge = path[-1][1]
-            if startNode in criticalCofaces and endEdge in criticalBoundary:
-                # nasli kriticno pot
-                alpha = criticalBoundary[endEdge][0]
-                beta = criticalCofaces[startNode][0]
-                my_path = {"path": path}
-                return alpha, beta, my_path
-        else:
-            # EdgTri poti
-            startEdge = path[0][0]
-            if startNode in criticalCofaces:
-                beta = criticalCofaces[startNode][0]
-                criticalPaths = findAllCriticalPathsFromBeta(path[0])
-
-
-
-
-
-
-        
-
-
-
-findValidCriticalPath(paths, critSet)
