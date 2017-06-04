@@ -254,30 +254,30 @@ def path_update(alpha, beta, Paths):
 # any of the variables can be set to "N/A"
 def printout(Crit, Field, Paths, new=False):
 
-    if Field != "N/A":
-        if new:
-            print "Vector field: "
-        else:
-            print "Updated vector field: "
-        for v in Field:
-            print v
-        print ""
+    # if Field != "N/A":
+    #     if new:
+    #         print "Vector field: "
+    #     else:
+    #         print "Updated vector field: "
+    #     for v in Field:
+    #         print v
+    #     print ""
 
-    if Paths != "N/A":
-        if new:
-            print "Paths: "
-        else:
-            print "Updated paths: "
-        for p in Paths:
-            print p
-        print ""
+    # if Paths != "N/A":
+    #     if new:
+    #         print "Paths: "
+    #     else:
+    #         print "Updated paths: "
+    #     for p in Paths:
+    #         print p
+    #     print ""
 
-    if Crit != "N/A":
-        if new:
-            print "Critical simplices: "
-        else:
-            print "Critical simplices after cancelling: "
-        print Crit
+    # if Crit != "N/A":
+    #     if new:
+    #         print "Critical simplices: "
+    #     else:
+    #         print "Critical simplices after cancelling: "
+    #     print Crit
 
     print ""
 
@@ -411,7 +411,7 @@ def DGVF(X, s, seed, Priority):
     for sx in S:
         if sx not in NotCrit:
             Crit.append(sx)
-
+    
     printout(Crit, V, Paths, new = True)
 
     return Crit, V, Paths
@@ -422,11 +422,12 @@ def DGVF(X, s, seed, Priority):
 
 # given a vector field, try cancelling pairs of critical simplices to
 # obtain a vector field with fewer critical cells
-def cancel(X, s, Crit, V, Paths, seed):
+def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
 
     # create a graded list (dictionary) of critical simplices
 
     GradCrit = {}
+
     for c in Crit:
         d = dim(c)
         if d not in GradCrit:
@@ -435,17 +436,26 @@ def cancel(X, s, Crit, V, Paths, seed):
             GradCrit[d].append(c)
 
     # for each critical simplex find all faces and cofaces
-
+    # TODO POHITRI 
     S = allsc(X)
     FaceCrit = {}
     CofaceCrit = {}
-    for c in Crit:
-        FaceCrit[c] = list(boundary(c))
-        CofaceCrit[c] = []
-        n = dim(c)
-        for sx in S:
-            if dim(sx) == n + 1 and c in boundary(sx):
-                CofaceCrit[c].append(sx)
+    if cofaces == None:
+        for c in Crit:
+            print c
+            FaceCrit[c] = list(boundary(c))
+            CofaceCrit[c] = []
+            n = dim(c)
+
+            for sx in S:
+                if dim(sx) == n + 1 and c in boundary(sx):
+                    CofaceCrit[c].append(sx)
+    else:
+        for c in Crit:
+            print c
+            FaceCrit[c] = list(boundary(c))
+            CofaceCrit[c] = cofaces[c]
+
 
     # build a list of pairs of critical simplices
     # with neighbouring dimensions (candidates for cancelling)
@@ -453,27 +463,34 @@ def cancel(X, s, Crit, V, Paths, seed):
 
     dims = GradCrit.keys()
     dims.sort()
-    pairs_to_cancel = []
+    pairs_to_cancel = set()
     St = star(s, X)
     if 0 in GradCrit and len(GradCrit[0]) == 1:
         dims.remove(0)
     for d in dims:
+        print d
+
         if d + 1 in dims:
             A = GradCrit[d]
             B = GradCrit[d + 1]
-            new_pairs = [(a, b) for a in A for b in B if ((a not in St and b not in St) and (a not in boundary(b)))]
+            print len(A)
+            print len(B)
+            print "Loop start"
+            new_pairs = [(a, b) for a in A for b in B]
+            print "Loop end"
             for pair in new_pairs:
-                pairs_to_cancel.append(pair)
+                pairs_to_cancel.add(pair)
 
     random.seed(seed)
 
     # while there are pairs to cancel left, choose one at random
 
-    while pairs_to_cancel:
+    while len(pairs_to_cancel) != 0:
+        if len(pairs_to_cancel) % 10000 == 0:
+            print len(pairs_to_cancel)
 
         m = len(pairs_to_cancel)
-        i = random.randint(0, m - 1)
-        pair = pairs_to_cancel[i]
+        pair = pairs_to_cancel.pop()
 
         # dim(alpha) = d, dim(beta) = d+1
 
@@ -491,7 +508,6 @@ def cancel(X, s, Crit, V, Paths, seed):
         for b in B:
             for a in A:
                 for p in Paths:
-
                     # if there is a path starting at b and ending in a, remember it
 
                     p0 = [arrow[0] for arrow in p]  # starts of arrows
@@ -522,7 +538,7 @@ def cancel(X, s, Crit, V, Paths, seed):
         if my_path == {}:
             unique = False
 
-        pairs_to_cancel.remove(pair)
+        # pairs_to_cancel.remove(pair)
 
         if unique:
             Crit, V, Paths = path_flip(alpha, beta, my_path, Crit, V)
@@ -563,7 +579,14 @@ name = "Q4"
 s = (3, 4)
 
 Crit, V, Paths = DGVF(X, s, name, {})
-Crit, V, Paths = cancel(X, s, V, Crit, Paths, name)
+
+print Crit
+print ""
+print X
+
+Crit, V, Paths = cancel(X, s, Crit, V, Paths, name)
 euler(Crit)
+
+print Crit
 
 print "Done."
