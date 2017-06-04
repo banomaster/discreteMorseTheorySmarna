@@ -486,7 +486,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
     # while there are pairs to cancel left, choose one at random
 
     while len(pairs_to_cancel) != 0:
-        if len(pairs_to_cancel) % 10000 == 0:
+        if len(pairs_to_cancel) % 100000 == 0:
             print len(pairs_to_cancel)
 
         m = len(pairs_to_cancel)
@@ -512,6 +512,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
 
                     p0 = [arrow[0] for arrow in p]  # starts of arrows
                     p1 = [arrow[1] for arrow in p]  # ends of arrows
+                   
                     if b in p0 and a in p1:
                         ib = p0.index(b)
                         ia = p1.index(a)

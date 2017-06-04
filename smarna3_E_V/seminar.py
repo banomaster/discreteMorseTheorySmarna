@@ -401,7 +401,7 @@ X = [tuple(t) for t in T]
 s = (3, 4)
 
 
-Crit, V, Paths = cancel(X, s, Crit, VF, Paths, "aloha", cofaces)
+Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces)
 
 euler(Crit)
 
