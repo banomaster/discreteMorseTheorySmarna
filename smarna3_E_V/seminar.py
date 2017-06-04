@@ -601,17 +601,18 @@ def findAllCriticalPathsFromBeta((e, t), critSet):
     possibleNewEdges.remove(e)
 
     for possibleEdge in possibleNewEdges:
+
+        #check if criticalEdge
+        if possibleEdge in critSet:
+            # dodamo novo kriticno pot ki se zacne z alfo
+            criticalPaths.append([possibleEdge])
+
         if EdgToTri[possibleEdge] == None:
             continue
         
         newPaths = findAllCriticalPathsFromBeta((possibleEdge, EdgToTri[possibleEdge]), critSet)
         if newPaths != None:
             criticalPaths += newPaths
-        
-        #check if criticalEdge
-        if possibleEdge in critSet:
-            # dodamo novo kriticno pot ki se zacne z alfo
-            criticalPaths.append([possibleEdge])
  
     
     if len(criticalPaths) == 0:
@@ -651,6 +652,7 @@ def findValidCriticalPath(paths, critSet):
     
     allPaths = copy.copy(paths)
     while len(paths) != 0:
+
         #select random Path 
         path = paths.pop()
 
@@ -697,6 +699,7 @@ def findValidCriticalPath(paths, critSet):
                 criticalPaths = findAllCriticalPathsFromBeta(path[0], critSet)
                 
                 if criticalPaths != None:
+
                     for criticalPath1 in criticalPaths:
                         valid = True
                         for criticalPath2 in criticalPaths:
