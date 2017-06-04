@@ -697,12 +697,24 @@ def findValidCriticalPath(paths, critSet):
             if startEdge in criticalCofaces:
                 beta = criticalCofaces[startEdge][0]
                 criticalPaths = findAllCriticalPathsFromBeta(path[0], critSet)
+
+                possibleNewEdges = copy.copy(triangleEdges[beta])
+                possibleNewEdges.remove(startEdge)
+                
+                otherPaths = []
+                for possibleEdge in possibleNewEdges:
+                    if EdgToTri[possibleEdge] == None:
+                        continue
+                    
+                    possibleOtherPaths = findAllCriticalPathsFromBeta((possibleEdge, EdgToTri[possibleEdge]), critSet)
+                    if possibleOtherPaths != None:
+                        otherPaths += possibleOtherPaths
                 
                 if criticalPaths != None:
 
                     for criticalPath1 in criticalPaths:
                         valid = True
-                        for criticalPath2 in criticalPaths:
+                        for criticalPath2 in criticalPaths + otherPaths:
                             if criticalPath1 != criticalPath2 and criticalPath1[-1] == criticalPath2[-1]:
                                 valid = False
                         
