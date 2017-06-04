@@ -537,6 +537,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
                     p0 = [arrow[0] for arrow in p]  # starts of arrows
                     p1 = [arrow[1] for arrow in p]  # ends of arrows
+                   
                     if b in p0 and a in p1:
                         print "if b in p0 and a in p1"
                         ib = p0.index(b)

@@ -24,7 +24,6 @@ for l in f:
 
     if abs(l[0] % 1 - 0.17) < 0.00001  or abs(l[1] % 1 - 0.15) < 0.00001:
         continue
-
     
     p = (l[0] / 10000.0, l[1] / 10000.0)
 
@@ -219,7 +218,6 @@ for e in EdgFromVer:
     v = EdgFromVer[e]
     VF.append((v, e))
 
-Paths = []
 pathsFromEdge = {}
 toVisit = {}
 
@@ -590,15 +588,23 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
     return Crit, V, Paths
 
-print "END vector field + paths"
 
 
 print("START critical")
+criticalBoundary = {}
+criticalCofaces = {}
+
+
 VerCri = set(vertexEdge.keys()).difference(VerUsed)
 VerCriTuple = []
 f1 = open("smarna_ver_critical.txt","w")
 for v in VerCri:
     VerCriTuple.append((v,))
+    for e in vertexEdge[v]:
+        if e not in criticalBoundary:
+            criticalBoundary[e] = [(v,)]
+        else:
+            criticalBoundary[e].append((v,))
     f1.write(str(v)+"\n")
 f1.close()
 
@@ -609,6 +615,13 @@ for e in EdgCri:
     eS = set(e)
     if not len(VerCri.intersection(eS)):
         EdgCriTuple.append(tuple(e))
+        for t in edgeTriangle[e]:
+            if t not in criticalBoundary:
+                criticalBoundary[t] = [(v,)]
+            else:
+                criticalBoundary[t].append((v,))
+
+        
         f1.write(str(e)+"\n")
 f1.close()
 
@@ -631,6 +644,7 @@ f1.close()
 print("END critical")
 
 Crit = VerCriTuple + EdgCriTuple + list(TriCri)
+critSet = set(Crit)
 X = [tuple(t) for t in T]
 s = (3, 4)
 
@@ -652,3 +666,32 @@ f1.close()
 
 
 print "Done."
+
+def findValidCriticalPath(paths, critSet):
+    
+    visitedPathsIndexes = {}
+    while True:
+        #select random Path 
+        m = len(paths)
+        r = random.randint(0, m - 1)
+        path = paths[r]
+
+        if len(path) == 1:
+            continue
+
+        visitedPathsIndexes[r] = True
+
+        if len(path[0][0]) == 1:
+            # verEdg poti
+            startNode = path[0][0]
+            endEdge = path[-1][1]
+        #else:
+            #EdgTri poti
+
+
+
+        
+
+
+
+findValidCriticalPath(paths, critSet)
