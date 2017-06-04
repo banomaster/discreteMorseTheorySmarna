@@ -694,7 +694,7 @@ def findValidCriticalPath(paths, critSet):
         else:
             # EdgTri poti
             startEdge = path[0][0]
-            if startEdge in criticalCofaces:
+            if startEdge in criticalCofaces and criticalCofaces[startEdge][0] in critSet:
                 beta = criticalCofaces[startEdge][0]
                 criticalPaths = findAllCriticalPathsFromBeta(path[0], critSet)
 
