@@ -8,9 +8,6 @@ import itertools
 import matplotlib.pyplot as plt
 import math
 
-sys.path.insert(0, '../cancellingalgorithm')
-from fibrewiseDMTnoplot import euler
-
 f = open("smarna.txt")
 pointValue = dict()
 indPoint = []
@@ -275,6 +272,7 @@ def computeMaxPathsEdgeTriangle():
     for edge in pathsFromEdge:
         paths += pathsFromEdge[edge]
 
+    paths = set([tuple(path) for path in paths])
     return paths
 
 def vertexToEdgePaths():
@@ -306,7 +304,7 @@ def vertexToEdgePaths():
             startVertex = vertex
 
         if edge != None:
-            currentPath.append(((vertex,), edge))
+            currentPath.append((vertex, edge))
             (v1,v2) = edge
             vertex = (v2,) if vertex == (v1,) else (v1,)
             if vertex in verticesToCheck:
@@ -326,15 +324,15 @@ def vertexToEdgePaths():
         path = pathStartFromVertex[vertex]
         if path != None:
             paths.append(path)
+
+    paths = set([tuple(path) for path in paths])
     return paths
 
 def dim(s):
-
     return len(s) - 1
 
 # from a list of maximal simplices construct a list of all simplices
 def allsc(X):
-
     A = set(X)
     for s in X:
         n = len(s)
@@ -368,11 +366,39 @@ def star(s, S):
             st.append(a)
     return st
 
-def path_flip(alpha, beta, my_path, Crit, V):
+# find the Euler characteristic of a simplex using the list of its critical cells
+def euler(Crit):
+
+    chi = {}
+    for c in Crit:
+        dim = len(c) - 1
+        if dim in chi:
+            chi[dim] += 1
+        else:
+            chi[dim] = 1
+
+    x = 0
+    for c in chi:
+        if c % 2 == 0:
+            x += chi[c]
+        else:
+            x -= chi[c]
+
+    return x
+
+def path_flip(alpha, beta, my_path, Crit, V, Paths):
 
     Q = my_path.keys()
     q = Q[0]
     k = len(q)
+
+    pair = q[0]
+    first, second = pair
+    if len(first) == 1:
+        oldPaths = set()
+    elif len(first) == 2:
+        oldPaths = computePathsFromTriangle((first,second))
+        oldPaths = set([tuple(path) for path in oldPaths])
 
     # remove old pairs from the arrow dicts
     for pair in q:
@@ -396,10 +422,19 @@ def path_flip(alpha, beta, my_path, Crit, V):
         elif len(first) == 2:
             EdgToTri[first] = second
 
-    # rebuild a list of maximal paths
-    
-    Paths = computeMaxPathsEdgeTriangle()
-    Paths += vertexToEdgePaths()
+    pair = qbar[0]
+    first, second = pair
+    if len(first) == 1:
+        newPaths = set()
+    elif len(first) == 2:
+        newPaths = computePathsFromTriangle((first,second))
+        newPaths = set([tuple(path) for path in newPaths])
+
+    # remove old paths and add new paths
+    for oldPath in oldPaths:
+        Paths.remove(oldPath)
+    for newPath in newPaths:
+        Paths.add(newPath)
 
     Crit.remove(alpha)
     Crit.remove(beta)
@@ -425,7 +460,6 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
     CofaceCrit = {}
     if cofaces == None:
         for c in Crit:
-            print c
             FaceCrit[c] = list(boundary(c))
             CofaceCrit[c] = []
             n = dim(c)
@@ -435,7 +469,6 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
                     CofaceCrit[c].append(sx)
     else:
         for c in Crit:
-            print c
             FaceCrit[c] = list(boundary(c))
             CofaceCrit[c] = cofaces[c]
 
@@ -450,16 +483,11 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
     if 0 in GradCrit and len(GradCrit[0]) == 1:
         dims.remove(0)
     for d in dims:
-        print d
-
         if d + 1 in dims:
             A = GradCrit[d]
             B = GradCrit[d + 1]
-            print len(A)
-            print len(B)
-            print "Loop start"
 
-
+            print "Generating canceling pairs for dim: " + str(d)
 
             if centralPointParameters != None:
                 new_pairs = []
@@ -471,18 +499,15 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
                         distance = (latA - latB)**2 + (lonA - lonB)**2
                         heightDiff = abs(heightA - heightB)
-
-                        # print "distance: " + str(distance)
-                        # print "heightDiff: " + str(heightDiff)
  
                         if distance < 0.0001 and heightDiff < 10 and (a not in boundary(b)):
                             new_pairs.append((a,b))
             else:
                 new_pairs = [(a,b) for a in A for b in B if (a not in boundary(b))]
 
-            print(len(new_pairs))
+            print("New pairs for canceling: " + str(len(new_pairs)))
 
-            print "Loop end"
+            print "Stopped generating canceling pairs"
             for pair in new_pairs:
                 pairs_to_cancel.add(pair)
 
@@ -492,7 +517,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
     while len(pairs_to_cancel) != 0:
         if len(pairs_to_cancel) % 10 == 0:
-            print len(pairs_to_cancel)
+            print "pairs to cancel left: " + str(len(pairs_to_cancel))
 
         m = len(pairs_to_cancel)
         pair = pairs_to_cancel.pop()
@@ -551,7 +576,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = 
 
         if unique:
             print("is unique!!!")
-            Crit, V, Paths = path_flip(alpha, beta, my_path, Crit, V)
+            Crit, V, Paths = path_flip(alpha, beta, my_path, Crit, V, Paths)
             toRemove = []
             for p in pairs_to_cancel:
                 if p[0] == alpha or p[1] == beta:
@@ -609,10 +634,12 @@ Crit = VerCriTuple + EdgCriTuple + list(TriCri)
 X = [tuple(t) for t in T]
 s = (3, 4)
 
-paths = []
-paths = computeMaxPathsEdgeTriangle()
-paths += vertexToEdgePaths()
+print "Generate paths"
 
+paths = computeMaxPathsEdgeTriangle()
+paths = paths.union(vertexToEdgePaths())
+
+print "Start canceling"
 
 Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
 
