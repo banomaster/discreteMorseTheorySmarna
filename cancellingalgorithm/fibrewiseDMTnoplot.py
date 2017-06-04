@@ -542,6 +542,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
         # pairs_to_cancel.remove(pair)
 
         if unique:
+            print("is unique!!!")
             Crit, V, Paths = path_flip(alpha, beta, my_path, Crit, V)
             toRemove = []
             for p in pairs_to_cancel:

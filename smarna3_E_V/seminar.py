@@ -324,7 +324,7 @@ def vertexToEdgePaths(vertexToEdgeArrows):
             startVertex = vertex
 
         if edge != None:
-            currentPath.append((vertex, edge))
+            currentPath.append(((vertex,), edge))
             (v1,v2) = edge
             vertex = v2 if vertex == v1 else v1
             if vertex in verticesToCheck:
