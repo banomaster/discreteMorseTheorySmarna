@@ -3,14 +3,20 @@ from scipy.spatial import Delaunay
 import operator
 import sys
 import copy 
+import random
+import itertools
+import matplotlib.pyplot as plt
+import math
 
 sys.path.insert(0, '../cancellingalgorithm')
-from fibrewiseDMTnoplot import cancel, euler
+from fibrewiseDMTnoplot import euler
 
 f = open("smarna.txt")
 pointValue = dict()
-indPoint = dict()
-indHight = dict()
+indPoint = []
+indHight = []
+
+centralPointParameters = dict()
 
 ind = 0
 for l in f:
@@ -23,12 +29,11 @@ for l in f:
         continue
 
     
-    p = (l[0], l[1])
-
+    p = (l[0] / 10000.0, l[1] / 10000.0)
 
     pointValue[p]=l[2]
-    indPoint[ind]=p
-    indHight[ind]=l[2]
+    indPoint.append(p)
+    indHight.append(l[2])
     ind+=1
 f.close()
 
@@ -82,9 +87,39 @@ for t in T:
 
     cofaces[t] = []
 
-    cofaces[(t[0],)] = cofaces[t[0]] + [e0, e1] if t[0] in cofaces else [e0, e1]
-    cofaces[(t[1],)] = cofaces[t[1]] + [e0, e2] if t[1] in cofaces else [e0, e2]
-    cofaces[(t[2],)] = cofaces[t[2]] + [e1, e2] if t[2] in cofaces else [e1, e2]
+    cofaces[(t[0],)] = cofaces[(t[0],)] + [e0, e1] if (t[0],) in cofaces else [e0, e1]
+    cofaces[(t[1],)] = cofaces[(t[1],)] + [e0, e2] if (t[1],) in cofaces else [e0, e2]
+    cofaces[(t[2],)] = cofaces[(t[2],)] + [e1, e2] if (t[2],) in cofaces else [e1, e2]
+
+    def getCentralVertex(simplex):
+
+        avgLat, avgLon, avgHeight = (0,0,0)
+        for p in simplex:
+            (lat, lon) = indPoint[p]
+            height = indHight[p]
+
+            avgLat += lat
+            avgLon += lon
+            avgHeight += height
+
+        d = len(simplex)
+        return avgLat / d, avgLon / d, avgHeight / d
+
+
+    if (t[0],) not in centralPointParameters:
+        centralPointParameters[(t[0],)] = getCentralVertex((t[0],))
+    if (t[1],) not in centralPointParameters:
+        centralPointParameters[(t[1],)] = getCentralVertex((t[1],))
+    if (t[2],) not in centralPointParameters:
+        centralPointParameters[(t[2],)] = getCentralVertex((t[2],))
+    if e0 not in centralPointParameters:
+        centralPointParameters[e0] = getCentralVertex(e0)
+    if e1 not in centralPointParameters:
+        centralPointParameters[e1] = getCentralVertex(e1)
+    if e2 not in centralPointParameters:
+        centralPointParameters[e2] = getCentralVertex(e2)
+    if t not in centralPointParameters:
+        centralPointParameters[t] = getCentralVertex(t)
 
 
 
@@ -165,7 +200,7 @@ for v in vertexEdge:
         EdgUsed.add(minE)
         VerUsed.add(v)
     
-    vertexToEdgeDict[v] = minE
+    vertexToEdgeDict[(v,)] = minE
     f1.write(str(pair)+"\n")
 f1.close()
 
@@ -179,15 +214,13 @@ print "START vector field + paths"
 VF = []
 
 index = 0
-for e in TriFromEdg:
-    t = TriFromEdg[e]
-    if t != None:
-        VF.append((e, t))
+for t in TriFromEdg:
+    e = TriFromEdg[t]
+    VF.append((e, t))
 
-for v in EdgFromVer:
-    e = EdgFromVer[v]
-    if e !=  None:
-        VF.append((v, e))
+for e in EdgFromVer:
+    v = EdgFromVer[e]
+    VF.append((v, e))
 
 Paths = []
 pathsFromEdge = {}
@@ -244,8 +277,8 @@ def computeMaxPathsEdgeTriangle():
 
     return paths
 
-def vertexToEdgePaths(vertexToEdgeArrows):
-    verticesToCheck = set(vertexToEdgeArrows.keys())
+def vertexToEdgePaths():
+    verticesToCheck = set(vertexToEdgeDict.keys())
     pathStartFromVertex = dict()
     currentPath = []
     startVertex = None
@@ -267,58 +300,7 @@ def vertexToEdgePaths(vertexToEdgeArrows):
                 vertex = None
                 continue
 
-        edge = vertexToEdgeArrows[vertex]
-
-        if len(currentPath) == 0:
-            startVertex = vertex
-
-        if edge != None:
-            currentPath.append((vertex, edge))
-            (v1,v2) = edge
-            vertex = v2 if vertex == v1 else v1
-            if vertex in verticesToCheck:
-                verticesToCheck.remove(vertex)
-
-        else:  
-            if startVertex != None and len(currentPath) > 0:
-                pathStartFromVertex[startVertex] = currentPath
-            startVertex = None
-            edge = None
-            currentPath = []
-            vertex = None
-
-
-    paths = []
-    for vertex in pathStartFromVertex:
-        path = pathStartFromVertex[vertex]
-        if path != None:
-            paths.append(path)
-    return paths
-
-def vertexToEdgePaths(vertexToEdgeArrows):
-    verticesToCheck = set(vertexToEdgeArrows.keys())
-    pathStartFromVertex = dict()
-    currentPath = []
-    startVertex = None
-    vertex = None
-
-    while len(verticesToCheck) > 0:
-
-        if vertex == None:
-            vertex = verticesToCheck.pop()
-
-        if vertex in pathStartFromVertex:
-            concatPath = pathStartFromVertex[vertex]
-            if concatPath != None:
-                pathStartFromVertex[vertex] = None
-                pathStartFromVertex[startVertex] = currentPath + concatPath
-                startVertex = None
-                edge = None
-                currentPath = []
-                vertex = None
-                continue
-
-        edge = vertexToEdgeArrows[vertex]
+        edge = vertexToEdgeDict[vertex]
 
         if len(currentPath) == 0:
             startVertex = vertex
@@ -326,7 +308,7 @@ def vertexToEdgePaths(vertexToEdgeArrows):
         if edge != None:
             currentPath.append(((vertex,), edge))
             (v1,v2) = edge
-            vertex = v2 if vertex == v1 else v1
+            vertex = (v2,) if vertex == (v1,) else (v1,)
             if vertex in verticesToCheck:
                 verticesToCheck.remove(vertex)
 
@@ -346,9 +328,242 @@ def vertexToEdgePaths(vertexToEdgeArrows):
             paths.append(path)
     return paths
 
-paths = computeMaxPathsEdgeTriangle()
-paths += vertexToEdgePaths(vertexToEdgeDict)
+def dim(s):
 
+    return len(s) - 1
+
+# from a list of maximal simplices construct a list of all simplices
+def allsc(X):
+
+    A = set(X)
+    for s in X:
+        n = len(s)
+        for i in range(1, n):
+            for p in itertools.combinations(s, i):
+                A.add(p)
+    A = list(A)
+    A.sort(key=len)
+    return A
+
+# get the boundary of s
+def boundary(s):
+
+    if len(s) == 1:
+        return []
+    B = set()
+    for b in itertools.combinations(s, len(s) - 1):
+        B.add(b)
+    return B
+
+# returns an open star of a given simplex s, S can be a list of all simplices
+# or a list of maximal simplices
+def star(s, S):
+
+    A = allsc(S)
+    st = [s]
+    for a in A:
+        B = boundary(a)
+        B = allsc(B)
+        if s in B:
+            st.append(a)
+    return st
+
+def path_flip(alpha, beta, my_path, Crit, V):
+
+    Q = my_path.keys()
+    q = Q[0]
+    k = len(q)
+
+    # remove old pairs from the arrow dicts
+    for pair in q:
+        first, second = pair
+        if len(first) == 1:
+            del vertexToEdgeDict[first]
+        elif len(first) == 2:
+            del EdgToTri[first]
+
+    # revese the path q
+    qbar = [(alpha, q[k - 1][1])]
+    for i in range(k - 1, 0, -1):
+        qbar.append((q[i][0], q[i - 1][1]))
+    qbar.append((q[0][0], beta))
+
+    # add new pairs to the arrow dicts
+    for pair in qbar:
+        first, second = pair
+        if len(first) == 1:
+            vertexToEdgeDict[first] = second
+        elif len(first) == 2:
+            EdgToTri[first] = second
+
+    # rebuild a list of maximal paths
+    
+    Paths = computeMaxPathsEdgeTriangle()
+    Paths += vertexToEdgePaths()
+
+    Crit.remove(alpha)
+    Crit.remove(beta)
+
+    return Crit, V, Paths
+
+def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = None):
+
+    # create a graded list (dictionary) of critical simplices
+
+    GradCrit = {}
+
+    for c in Crit:
+        d = dim(c)
+        if d not in GradCrit:
+            GradCrit[d] = [c]
+        else:
+            GradCrit[d].append(c)
+
+    # for each critical simplex find all faces and cofaces
+    S = allsc(X)
+    FaceCrit = {}
+    CofaceCrit = {}
+    if cofaces == None:
+        for c in Crit:
+            print c
+            FaceCrit[c] = list(boundary(c))
+            CofaceCrit[c] = []
+            n = dim(c)
+
+            for sx in S:
+                if dim(sx) == n + 1 and c in boundary(sx):
+                    CofaceCrit[c].append(sx)
+    else:
+        for c in Crit:
+            print c
+            FaceCrit[c] = list(boundary(c))
+            CofaceCrit[c] = cofaces[c]
+
+    # build a list of pairs of critical simplices
+    # with neighbouring dimensions (candidates for cancelling)
+    # only consider pairs not contained in the star of s
+
+    dims = GradCrit.keys()
+    dims.sort()
+    pairs_to_cancel = set()
+    St = star(s, X)
+    if 0 in GradCrit and len(GradCrit[0]) == 1:
+        dims.remove(0)
+    for d in dims:
+        print d
+
+        if d + 1 in dims:
+            A = GradCrit[d]
+            B = GradCrit[d + 1]
+            print len(A)
+            print len(B)
+            print "Loop start"
+
+
+
+            if centralPointParameters != None:
+                new_pairs = []
+                for a in A:
+                    latA, lonA, heightA = centralPointParameters[a]
+                    for b in B:
+
+                        latB, lonB, heightB = centralPointParameters[b]
+
+                        distance = (latA - latB)**2 + (lonA - lonB)**2
+                        heightDiff = abs(heightA - heightB)
+
+                        # print "distance: " + str(distance)
+                        # print "heightDiff: " + str(heightDiff)
+ 
+                        if distance < 0.0001 and heightDiff < 10 and (a not in boundary(b)):
+                            new_pairs.append((a,b))
+            else:
+                new_pairs = [(a,b) for a in A for b in B if (a not in boundary(b))]
+
+            print(len(new_pairs))
+
+            print "Loop end"
+            for pair in new_pairs:
+                pairs_to_cancel.add(pair)
+
+    random.seed(seed)
+
+    # while there are pairs to cancel left, choose one at random
+
+    while len(pairs_to_cancel) != 0:
+        if len(pairs_to_cancel) % 10 == 0:
+            print len(pairs_to_cancel)
+
+        m = len(pairs_to_cancel)
+        pair = pairs_to_cancel.pop()
+
+        # dim(alpha) = d, dim(beta) = d+1
+
+        alpha = pair[0]
+        beta = pair[1]
+
+        # look at all faces and cofaces
+
+        B = FaceCrit[beta]
+        A = CofaceCrit[alpha]
+
+        my_path = {}
+        unique = True
+
+        for b in B:
+            for a in A:
+                for p in Paths:
+                    # if there is a path starting at b and ending in a, remember it
+
+                    p0 = [arrow[0] for arrow in p]  # starts of arrows
+                    p1 = [arrow[1] for arrow in p]  # ends of arrows
+                    if b in p0 and a in p1:
+                        print "if b in p0 and a in p1"
+                        ib = p0.index(b)
+                        ia = p1.index(a)
+                        if ib <= ia:
+                            print "ib <= ia"
+                            q = tuple(p[ib:ia + 1])
+                            Q = my_path.keys()
+                            if Q != [] and q not in Q:
+                                print "unique false 1"
+                                unique = False
+                            if q in Q:
+                                my_path[q].append((p, ib, ia, b, a))
+                            elif my_path == {}:
+                                my_path[q] = [(p, ib, ia, b, a)]
+                            else:
+                                print "unique false 2"
+                                unique = False
+
+                            # if there is more than one pair, the pair cannot be cancelled, so skip it
+
+                            if not unique:
+                                break  # for p in Paths
+                if not unique:
+                    break  # for a in A
+            if not unique:
+                break  # for b in B
+        if my_path == {}:
+            unique = False
+
+        # pairs_to_cancel.remove(pair)
+
+        if unique:
+            print("is unique!!!")
+            Crit, V, Paths = path_flip(alpha, beta, my_path, Crit, V)
+            toRemove = []
+            for p in pairs_to_cancel:
+                if p[0] == alpha or p[1] == beta:
+                    toRemove.append(p)
+            for p in toRemove:
+                pairs_to_cancel.remove(p)
+
+    # while ends here
+
+    printout(Crit, V, Paths)
+
+    return Crit, V, Paths
 
 print "END vector field + paths"
 
@@ -389,19 +604,17 @@ f1.close()
 
 
 print("END critical")
-#IZRIS 2D
-# import matplotlib.pyplot as plt
-# V=np.array([list(v) for v in V])
-# plt.triplot(V[:,0], V[:,1], T.copy())
-# plt.plot(V[:,0], V[:,1], '.')
-# plt.savefig("smarna_tri")
 
 Crit = VerCriTuple + EdgCriTuple + list(TriCri)
 X = [tuple(t) for t in T]
 s = (3, 4)
 
+paths = []
+paths = computeMaxPathsEdgeTriangle()
+paths += vertexToEdgePaths()
 
-Crit, V, Paths = cancel(X, s, Crit, VF, Paths, "aloha", cofaces)
+
+Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
 
 euler(Crit)
 
