@@ -2,6 +2,7 @@ import random
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.backends.backend_pdf import PdfPages
@@ -303,7 +304,9 @@ def path_flip(alpha, beta, my_path, Crit, V):
 
     # remove old pairs from the vector field
 
+    print(V)
     for pair in q:
+        print(pair)
         V.remove(pair)
 
     # add new pairs to the vector field
@@ -422,7 +425,7 @@ def DGVF(X, s, seed, Priority):
 
 # given a vector field, try cancelling pairs of critical simplices to
 # obtain a vector field with fewer critical cells
-def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
+def cancel(X, s, Crit, V, Paths, seed, cofaces = None, centralPointParameters = None):
 
     # create a graded list (dictionary) of critical simplices
 
@@ -456,7 +459,6 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
             FaceCrit[c] = list(boundary(c))
             CofaceCrit[c] = cofaces[c]
 
-
     # build a list of pairs of critical simplices
     # with neighbouring dimensions (candidates for cancelling)
     # only consider pairs not contained in the star of s
@@ -476,7 +478,30 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
             print len(A)
             print len(B)
             print "Loop start"
-            new_pairs = [(a, b) for a in A for b in B]
+
+
+
+            if centralPointParameters != None:
+                new_pairs = []
+                for a in A:
+                    latA, lonA, heightA = centralPointParameters[a]
+                    for b in B:
+
+                        latB, lonB, heightB = centralPointParameters[b]
+
+                        distance = (latA - latB)**2 + (lonA - lonB)**2
+                        heightDiff = abs(heightA - heightB)
+
+                        # print "distance: " + str(distance)
+                        # print "heightDiff: " + str(heightDiff)
+ 
+                        if distance < 0.0001 and heightDiff < 10 and (a not in boundary(b)):
+                            new_pairs.append((a,b))
+            else:
+                new_pairs = [(a,b) for a in A for b in B if (a not in boundary(b))]
+
+            print(len(new_pairs))
+
             print "Loop end"
             for pair in new_pairs:
                 pairs_to_cancel.add(pair)
@@ -486,7 +511,7 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
     # while there are pairs to cancel left, choose one at random
 
     while len(pairs_to_cancel) != 0:
-        if len(pairs_to_cancel) % 100000 == 0:
+        if len(pairs_to_cancel) % 10 == 0:
             print len(pairs_to_cancel)
 
         m = len(pairs_to_cancel)
@@ -514,18 +539,22 @@ def cancel(X, s, Crit, V, Paths, seed, cofaces = None):
                     p1 = [arrow[1] for arrow in p]  # ends of arrows
                    
                     if b in p0 and a in p1:
+                        print "if b in p0 and a in p1"
                         ib = p0.index(b)
                         ia = p1.index(a)
                         if ib <= ia:
+                            print "ib <= ia"
                             q = tuple(p[ib:ia + 1])
                             Q = my_path.keys()
                             if Q != [] and q not in Q:
+                                print "unique false 1"
                                 unique = False
                             if q in Q:
                                 my_path[q].append((p, ib, ia, b, a))
                             elif my_path == {}:
                                 my_path[q] = [(p, ib, ia, b, a)]
                             else:
+                                print "unique false 2"
                                 unique = False
 
                             # if there is more than one pair, the pair cannot be cancelled, so skip it
