@@ -1,0 +1,12 @@
+
+BEFORE CANCELING
+critical vertices: 4097
+critical edges: 15201
+critical triangles: 5108
+total critical cells: 24406
+
+AFTER CANCELING
+critical vertices: 851
+critical edges: 6937
+critical triangles: 90
+total critical cells: 7878

@@ -221,7 +221,7 @@ for e in EdgFromVer:
 pathsFromEdge = {}
 toVisit = {}
 
-def computePathsFromTriangle((e, t)):
+def computePathsFromTriangle((e, t), pathsFromEdge):
     paths = []
     possibleNewEdges = copy.copy(triangleEdges[t])
 
@@ -243,30 +243,31 @@ def computePathsFromTriangle((e, t)):
         if EdgToTri[possibleEdge] == None:
             continue
         
-        newPaths = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]))
+        newPaths, pathsFromEdge = computePathsFromTriangle((possibleEdge, EdgToTri[possibleEdge]), pathsFromEdge)
         paths += newPaths
     
     if len(paths) == 0:
         # zacni novo pot
-        return [[(e, t)]]
+        return [[(e, t)]], pathsFromEdge
     else:
         # dodaj vektor na vse najdene poti
         for path in paths:
             path.insert(0,(e, t))
 
-        return paths
+        return paths, pathsFromEdge
     
 
 def computeMaxPathsEdgeTriangle():
     n = len(EdgToTri)
     toVisit = copy.copy(EdgToTri)
 
+    pathsFromEdge = dict()
     while len(toVisit) != 0:
         startEdge, triangle = toVisit.popitem()
         if triangle == None:
             continue
     
-        pathsFromEdge[startEdge] = computePathsFromTriangle((startEdge, triangle))
+        pathsFromEdge[startEdge], pathsFromEdge = computePathsFromTriangle((startEdge, triangle), pathsFromEdge)
     
     paths = []
     for edge in pathsFromEdge:
@@ -436,11 +437,14 @@ def path_flip(alpha, beta, my_path, critSet, Paths):
     # for newPath in newPaths:
     #     Paths.add(newPath)
 
-    Paths = computeMaxPathsEdgeTriangle()
-    Paths = Paths.union(vertexToEdgePaths())
-    
     critSet.remove(alpha)
     critSet.remove(beta)
+
+    Paths = computeMaxPathsEdgeTriangle()
+    large = len(Paths)
+    # print "large paths: " + str(large)
+    Paths = Paths.union(vertexToEdgePaths())
+    # print "small paths: " + str(len(Paths) - large)
 
     return critSet, Paths
 
@@ -651,16 +655,16 @@ def getNodesOnPath(path):
 def findValidCriticalPath(paths, critSet):
     
     allPaths = copy.copy(paths)
-    while len(paths) != 0:
+    while len(allPaths) != 0:
 
         #select random Path 
-        path = paths.pop()
+        path = allPaths.pop()
 
         if len(path[0][0]) == 1:
             # verEdg poti
             
             endEdge = path[-1][1]
-            if endEdge not in criticalBoundary:
+            if endEdge not in criticalBoundary or criticalBoundary[endEdge][0] not in critSet:
                 continue
             
             alpha = criticalBoundary[endEdge][0]
@@ -681,7 +685,7 @@ def findValidCriticalPath(paths, critSet):
 
                     pathsIntersection = nodesOnCritPath.intersection(nodesOnOtherPath)
 
-                    if len(pathsIntersection) == 0:
+                    if len(pathsIntersection) == 0 and alpha != otherNode:
                         my_path = {"path": possibleCriticalPath}
                         return alpha, beta, my_path
                 
@@ -769,20 +773,19 @@ EdgCriTuple = []
 f1 = open("smarna_edg_critical.txt","w")
 for e in EdgCri:
     eS = set(e)
-    if not len(VerCri.intersection(eS)):
-        EdgCriTuple.append(tuple(e))
-        for t in edgeTriangle[e]:
-            if t not in criticalBoundary:
-                criticalBoundary[t] = [(v,)]
-            else:
-                criticalBoundary[t].append((v,))
-        for v in boundary(e):
-            if v not in criticalCofaces:
-                criticalCofaces[v] = [e]
-            else:
-                criticalCofaces[v].append(e)
+    EdgCriTuple.append(e)
+    for t in edgeTriangle[e]:
+        if t not in criticalBoundary:
+            criticalBoundary[t] = [(v,)]
+        else:
+            criticalBoundary[t].append((v,))
+    for v in boundary(e):
+        if v not in criticalCofaces:
+            criticalCofaces[v] = [e]
+        else:
+            criticalCofaces[v].append(e)
         
-        f1.write(str(e)+"\n")
+    f1.write(str(e)+"\n")
 f1.close()
 
 
@@ -824,17 +827,44 @@ print "Start canceling"
 
 
 #Crit, V, Paths = cancel(X, s, Crit, VF, paths, "aloha", cofaces, centralPointParameters)
-critSet, Paths = cancelBetter(critSet, paths)
-euler(critSet)
+# critSet, Paths = cancelBetter(critSet, paths)
+# euler(critSet)
 
-critNumAfter = len(critSet)
+# critNumAfter = len(critSet)
 
-print "DELETE CRIT: " + str(critNumBefore - critNumAfter)
+# print "DELETE CRIT: " + str(critNumBefore - critNumAfter)
 
-f1 = open("after_smarna_critical.txt","w")
-for c in critSet:
-    f1.write(str(c)+"\n")
-f1.close()
+# f1 = open("after_smarna_critical.txt","w")
+# for c in critSet:
+#     f1.write(str(c)+"\n")
+# f1.close()
+
+with open("after_smarna_critical.txt") as f:
+
+  vertices = []
+  edges = []
+  triangles = []
+
+  for line in f:
+    line = line.strip()[1:-1]
+    lineSplit = line.split(',')
+
+    if lineSplit[1] == "":
+      vertices.append(int(lineSplit[0]))
+    elif len(lineSplit) == 2:
+      edges.append((int(lineSplit[0]), int(lineSplit[1])))
+    elif len(lineSplit) == 3:
+      triangles.append((int(lineSplit[0]), int(lineSplit[1]), int(lineSplit[2])))
+
+
+  # for triangle in triangles:
+  #   print "triangle: " + str(triangle)
+  #   for v in triangle:
+  #       print(indHight[v])
+
+  print "vertices: " + str(len(vertices))
+  print "edges: " + str(len(edges))
+  print "triangles: " + str(len(triangles))
 
 print "Done."
 
